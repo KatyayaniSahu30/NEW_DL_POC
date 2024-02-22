@@ -39,13 +39,15 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange }) => {
   // modules.toolbar[0][0]['header'] = 1;
 
   return (
-    <ReactQuill
-      theme="snow"
-      value={editorHtml}
-      onChange={handleChange}
-      modules={modules}
-      
-    />
+    <div className="h-400">
+      <ReactQuill
+        theme="snow"
+        value={editorHtml}
+        onChange={handleChange}
+        modules={modules}
+      />
+    </div> 
+
   );
 };
 

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { procedure, router } from '../trpc';
 import { PrismaClient } from '@prisma/client';
 import { appRouter } from './_app';
+import cron from 'node-cron';
+import { type } from 'os';
 
 // create a Prisma client instance
 const prisma = new PrismaClient();
@@ -15,31 +17,152 @@ const idSchema = z.object({
 // define the schema for the brief data
 const briefSchema = z.object({
   title: z.string(),
-  content: z.string()
+  draftContent: z.string()
 });
 
 const briefUpdateSchema = z.object({
   id: z.number(),
   title: z.string(),
-  content: z.string()
+  draftContent: z.string()
 });
 
-// const briefUpdateSchema = z.object({
-//   id: z.number(),
-//   title: z.string().optional(), // Make title optional
-//   content: z.string().optional(), // Make content optional
-// });
+const publishBriefByIdSchema = z.object({
+  id: z.number(),
+  publishedOn: z.union([z.date(), z.string()]).optional(),
+  //publishedLater: z.union([z.date(), z.string()]).optional(),
+});
+
+const idAndPublishLaterSchema = z.object({
+  id: z.number(),
+  publishedLater: z.union([z.date(), z.string()]).optional(),
+});
+
+// cron.schedule
+// Cron job to check and publish briefs at their scheduled time
+const triggerCronJob = () => {
+  // Schedule a cron job to check and publish briefs at their scheduled time
+  cron.schedule('59 * * * * *', async () => { // Change the cron schedule as per your requirement
+    try {
+      // Find briefs with a scheduled publishing date
+      const pendingBriefs = await prisma.brief.findMany({
+        where: {
+          publishedLater: {
+            not: null,
+
+            // lt: new Date(), // Check if the publishLater date is less than the current date/time
+          },
+        },
+      });
+      console.log('test', pendingBriefs);
+      // console.log('typedemo', typeof pendingBriefs[0].publishedLater);
+
+      // Publish briefs that match the criteria
+      for (const brief of pendingBriefs) {
+        // console.log('typedemo' , typeof brief.publishedLater);
+        if (brief.publishedLater && brief.publishedLater > new Date()) {
+          const res = await publish({ id: brief.id, publishedOn: brief.publishedLater });
+          console.log('published', res);
+        }
+      }
+    } catch (error) {
+      console.error('Error publishing briefs:', error);
+    }
+  });
+};
+
+const publish = async (input: { id: number, publishedOn: string | Date | null }) => {
+
+  const { id, publishedOn } = input;
+
+  // Fetch the brief by ID to get the draft content
+  const brief = await prisma.brief.findUnique({
+    where: { id },
+    select: { draftContent: true }, // Select only the draftContent field
+  });
+
+  if (!brief) {
+    throw new Error(`Brief with ID ${id} not found.`);
+  }
+
+  // Convert the provided publishedOn date string to a Date object
+  const publishedDate = publishedOn ? new Date(publishedOn) : new Date();
+
+  console.log(publishedDate);
+
+
+  // Update the brief based on the provided ID
+  const updatedBrief = await prisma.brief.update({
+    where: { id },
+    data: {
+      publishedContent: brief.draftContent, // Update publishContent with draftContent
+      isPublished: true,
+      isDraft: false,
+      publishedOn: publishedDate, // Use the provided publishedOn date or current date/time
+      publishedLater: null,
+    },
+  });
+
+  return updatedBrief;
+
+}
+
+//  // Define the cron job for testing purposes
+//  cron.schedule('* * * * *', () => {
+//   console.log('Running a task every minute');
+//  }
 
 // define the editRouter with procedures
 export const editRouter = router({
 
+  // Procedure to publish a brief based on its ID
+  publishBriefById: procedure.input(publishBriefByIdSchema).mutation(async ({ input }) => {
+
+    const { id, publishedOn } = input;
+    return publish({ id, publishedOn: publishedOn ?? null }); // Use null if publishedOn is undefined
+  }),
+
+  // Procedure to schedule publishing of briefs
+  schedulePublishing: procedure.input(idAndPublishLaterSchema).mutation(async ({ input }) => {
+    const { id, publishedLater } = input;
+
+    // Fetch the brief by ID to get the draft content
+    const brief = await prisma.brief.findUnique({
+      where: { id },
+      select: { draftContent: true }, // Select only the draftContent field
+    });
+
+    console.log('Data', brief);
+
+    if (!brief) {
+      throw new Error(`Brief with ID ${id} not found.`);
+    }
+    console.log('publishedLater', publishedLater);
+    // Update the brief based on the provided ID
+    const updatedBrief = await prisma.brief.update({
+      where: { id },
+      data: {
+        publishedContent: brief.draftContent, // Update publishContent with draftContent
+        isPublished: true,
+        isDraft: false,
+        publishedOn: new Date(), // Use the current date/time as the publishedOn date
+        publishedLater: publishedLater ? new Date(publishedLater) : null, // Set publishedLater field
+      },
+    });
+    console.log('UpdatedBrief',updatedBrief);
+
+    // Trigger cron job to publish briefs at their scheduled time
+    triggerCronJob();
+
+    return updatedBrief;
+  }),
+
   // procedure to add a brief
-  addBrief: procedure.input(briefSchema).mutation(async ({ input }) => {
-    const { title, content } = input;
+  saveAndDraftBrief: procedure.input(briefSchema).mutation(async ({ input }) => {
+    const { title, draftContent } = input;
     const addBrief = await prisma.brief.create({
       data: {
         title,
-        content,
+        draftContent
       },
     });
     return addBrief;
@@ -68,40 +191,63 @@ export const editRouter = router({
     return { fetchAllBriefs };
   }),
 
+  //   getAll: procedure.query(async ({ input = {} as Input }) => {
+  //   const { sortField = 'title', sortOrder = 'asc' } = input; // Default sorting by 'title' in ascending order
+  
+  //   const fetchAllBriefs = await prisma.brief.findMany({
+  //     orderBy: {
+  //       [sortField]: sortOrder // Pass sortOrder directly
+  //     }
+  //   });
+  
+  //   return { fetchAllBriefs };
+  // }),
+
   // Update brief
   updateBrief: procedure.input(briefUpdateSchema).mutation(async ({ input }) => {
-    const { id, ...briefData } = input;
-    const updateBrief = await prisma.brief.update({
+    const { id, title, draftContent } = input;
+
+    // Fetch the brief by ID to get the draft content
+    const brief = await prisma.brief.findUnique({
       where: { id },
-      data: briefData,
+      select: { draftContent: true }, // Select only the draftContent field
     });
-    return updateBrief;
+
+    if (!brief) {
+      throw new Error(`Brief with ID ${id} not found.`);
+    }
+
+
+    // Update the brief based on the provided ID
+    const updatedBrief = await prisma.brief.update({
+      where: { id },
+      data: {
+        title,
+        draftContent,
+        publishedContent: draftContent, // Update publishedContent with draftContent
+        isDraft: true, // Set isDraft to true for editing in draft mode
+        isPublished: false, // Set isPublished to false
+        // publishedOn: null, // Clear publishedOn date
+        publishedOn: new Date()
+      },
+    });
+
+    return updatedBrief;
   }),
 
-  // Define the updateBrief procedure with updated logic
-// updateBrief: procedure.input(briefUpdateSchema).mutation(async ({ input }) => {
-//   const { id, title, content } = input;
+  // Procedure to get published briefs
+  //  getPublishedBriefs: procedure.query(async () => {
+  //   const publishedBriefs = await prisma.brief.findMany({
+  //     where: { isPublished: true },
+  //   });
+  //   return publishedBriefs;
+  // }),
 
-//   // Prepare data to be updated
-//   const dataToUpdate: { title?: string; content?: string } = {};
-//   if (title !== undefined) {
-//     dataToUpdate.title = title;
-//   }
-//   if (content !== undefined) {
-//     dataToUpdate.content = content;
-//   }
 
-//   // Update the brief based on the provided ID
-//   const updatedBrief = await prisma.brief.update({
-//     where: { id },
-//     data: dataToUpdate,
-//   });
 
-//   return updatedBrief;
-// }),
 
-  
 });
 
 // export the type of appRouter
 export type AppRouter = typeof appRouter;
+

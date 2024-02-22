@@ -17,8 +17,14 @@ model User {
 
 //User with an id as int, & name and email as strings
 model Brief {
-  id    Int     @id @default(autoincrement())
-  title String
-  content  String 
+    id             Int    @id @default(autoincrement())
+    title          String
+    draftContent   String
+    publishedContent String?
+    isPublished    Boolean   @default(false)
+    isDraft        Boolean   @default(true)
+    publishedOn    DateTime?
+    publishedLater DateTime?
+    updatedAt      DateTime  @updatedAt
 }
 
