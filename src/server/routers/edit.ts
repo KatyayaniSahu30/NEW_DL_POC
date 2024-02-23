@@ -125,36 +125,30 @@ export const editRouter = router({
   schedulePublishing: procedure.input(idAndPublishLaterSchema).mutation(async ({ input }) => {
     const { id, publishedLater } = input;
 
-    // Fetch the brief by ID to get the draft content
+    // Fetch the brief by ID to ensure it exists
     const brief = await prisma.brief.findUnique({
       where: { id },
       select: { draftContent: true }, // Select only the draftContent field
     });
 
-    console.log('Data', brief);
-
     if (!brief) {
       throw new Error(`Brief with ID ${id} not found.`);
     }
-    console.log('publishedLater', publishedLater);
+
     // Update the brief based on the provided ID
     const updatedBrief = await prisma.brief.update({
       where: { id },
       data: {
-        publishedContent: brief.draftContent, // Update publishContent with draftContent
-        isPublished: true,
-        isDraft: false,
-        publishedOn: new Date(), // Use the current date/time as the publishedOn date
         publishedLater: publishedLater ? new Date(publishedLater) : null, // Set publishedLater field
       },
     });
-    console.log('UpdatedBrief',updatedBrief);
 
     // Trigger cron job to publish briefs at their scheduled time
     triggerCronJob();
 
     return updatedBrief;
   }),
+
 
   // procedure to add a brief
   saveAndDraftBrief: procedure.input(briefSchema).mutation(async ({ input }) => {
@@ -193,13 +187,13 @@ export const editRouter = router({
 
   //   getAll: procedure.query(async ({ input = {} as Input }) => {
   //   const { sortField = 'title', sortOrder = 'asc' } = input; // Default sorting by 'title' in ascending order
-  
+
   //   const fetchAllBriefs = await prisma.brief.findMany({
   //     orderBy: {
   //       [sortField]: sortOrder // Pass sortOrder directly
   //     }
   //   });
-  
+
   //   return { fetchAllBriefs };
   // }),
 
@@ -228,7 +222,7 @@ export const editRouter = router({
         isDraft: true, // Set isDraft to true for editing in draft mode
         isPublished: false, // Set isPublished to false
         // publishedOn: null, // Clear publishedOn date
-        publishedOn: new Date()
+        // publishedOn: new Date()
       },
     });
 

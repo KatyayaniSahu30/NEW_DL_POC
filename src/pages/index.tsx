@@ -101,6 +101,7 @@ export default function IndexPage() {
   return (
     <div className="w-1/2 mx-auto">
       {/* Add User */}
+      <h1 className="mb-4 text-4xl font-bold text-center mt-5">CRUD Operation</h1>
       <h2 className="mb-4 text-2xl font-bold">Add User Data</h2>
       <form onSubmit={handleCreateUser} className="rounded-lg p-8 shadow-md border border-black mb-10">
         <div className="mb-4">
