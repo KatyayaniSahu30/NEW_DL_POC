@@ -38,7 +38,6 @@ const BriefPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    // Send the updated draftContent to your API
     try {
       // Perform update operation 
       await updateBriefMutation.mutateAsync({
@@ -47,12 +46,21 @@ const BriefPage: React.FC = () => {
         draftContent: richText,
       });
       window.alert('Data saved successfully');
+
+     // Check if briefData exists and if it is scheduled for publishing later
+    if (briefData && briefData.publishedLater !== null) {
+      window.alert('Brief is scheduled to publish later');
+      return; // Do not navigate to view page
+    }
+    
+
       // Redirect to the view page after update
       router.push(`/briefs/view/${id}`);
     } catch (error) {
       console.error('Error updating draftContent:', error);
     }
   };
+
 
   const handlePublishLater = async () => {
     try {
@@ -156,7 +164,7 @@ const BriefPage: React.FC = () => {
             </div>
 
             <button className="border border-black px-4 py-2 rounded bg-green-500 text-white mt-4" onClick={handleSave}>
-              Save
+              Save & Draft
             </button>
           </div>
         </div>

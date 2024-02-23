@@ -18,6 +18,9 @@ const Test = () => {
         } else if (option === 'Published Content') {
             return briefData?.fetchAllBriefs.filter(brief => brief.isPublished === true);
         }
+        else if (option === 'Upcoming Content') {
+            return briefData?.fetchAllBriefs.filter(brief => brief.publishedLater !== null);
+        }
         return [];
     };
 
@@ -73,6 +76,7 @@ const Test = () => {
                     >
                         <option value="Published Content">Published Content</option>
                         <option value="Draft Content">Draft Content</option>
+                        <option value="Upcoming Content">Upcoming Content</option>
                     </select>
                 </div>
 

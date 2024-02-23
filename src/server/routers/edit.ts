@@ -4,7 +4,10 @@ import { procedure, router } from '../trpc';
 import { PrismaClient } from '@prisma/client';
 import { appRouter } from './_app';
 import cron from 'node-cron';
+import schedule from 'node-schedule';
 import { type } from 'os';
+
+// import { parseCronExpression } from 'cron-schedule'; 
 
 // create a Prisma client instance
 const prisma = new PrismaClient();
@@ -37,11 +40,28 @@ const idAndPublishLaterSchema = z.object({
   publishedLater: z.union([z.date(), z.string()]).optional(),
 });
 
+
+
+
 // cron.schedule
 // Cron job to check and publish briefs at their scheduled time
 const triggerCronJob = () => {
+  
+  // Create a rule to run every minute
+  // const rule = new schedule.RecurrenceRule();
+  // rule.second = 0; // Run at the beginning of every minute
+
+  // const job = schedule.scheduleJob(rule, () => {
+  //   const now = new Date();
+  //   console.log(Logging at ${now});
+  // });
+
+
   // Schedule a cron job to check and publish briefs at their scheduled time
-  cron.schedule('59 * * * * *', async () => { // Change the cron schedule as per your requirement
+   const minute = '0 */5 * * * *'
+  // const day = '59 * * * * *'
+  // cron.schedule(minute, async () => { // Change the cron schedule as per your requirement
+    schedule.scheduleJob(minute, async () => {
     try {
       // Find briefs with a scheduled publishing date
       const pendingBriefs = await prisma.brief.findMany({
@@ -59,7 +79,11 @@ const triggerCronJob = () => {
       // Publish briefs that match the criteria
       for (const brief of pendingBriefs) {
         // console.log('typedemo' , typeof brief.publishedLater);
-        if (brief.publishedLater && brief.publishedLater > new Date()) {
+        if (
+          brief.publishedLater &&
+          brief.publishedLater > new Date() &&
+          brief.publishedLater < new Date(new Date().setDate(new Date().getDate() + 1))
+        )  {
           const res = await publish({ id: brief.id, publishedOn: brief.publishedLater });
           console.log('published', res);
         }
@@ -70,7 +94,10 @@ const triggerCronJob = () => {
   });
 };
 
-const publish = async (input: { id: number, publishedOn: string | Date | null }) => {
+
+
+const publish = async (input: { id: number, publishedOn: string | Date | null }, content?:string ) => {
+
 
   const { id, publishedOn } = input;
 
@@ -107,9 +134,9 @@ const publish = async (input: { id: number, publishedOn: string | Date | null })
 }
 
 //  // Define the cron job for testing purposes
-//  cron.schedule('* * * * *', () => {
-//   console.log('Running a task every minute');
-//  }
+// cron.schedule('0 */2 * * * *', () => {
+//   console.log('Running a task every 5 minutes');
+// });
 
 // define the editRouter with procedures
 export const editRouter = router({
@@ -140,6 +167,7 @@ export const editRouter = router({
       where: { id },
       data: {
         publishedLater: publishedLater ? new Date(publishedLater) : null, // Set publishedLater field
+
       },
     });
 
