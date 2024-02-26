@@ -3,6 +3,7 @@ import RichTextEditor from '@/components/rich-text-editor';
 import router, { useRouter } from 'next/router';
 import { trpc } from '@/utils';
 import DatePicker from 'react-datepicker';
+import toast, { Toaster } from 'react-hot-toast';
 import "react-datepicker/dist/react-datepicker.css";
 
 const RichTextPage: React.FC = () => {
@@ -19,7 +20,7 @@ const RichTextPage: React.FC = () => {
     setError(null);
     // Check if the title or brief content is empty
     if (!briefTitle.trim() || !richText.trim()) {
-      window.alert('Please fill in the title and brief content');
+      toast.success('Please fill in the title and brief content');
       return;
     }
     try {
@@ -29,7 +30,7 @@ const RichTextPage: React.FC = () => {
       });
 
       if (result?.id) {
-        window.alert('Draft saved successfully');
+        toast.success('Draft saved successfully');
         router.push(`/briefs/view/${result.id}`);
       } else {
         setError('Invalid response from server');

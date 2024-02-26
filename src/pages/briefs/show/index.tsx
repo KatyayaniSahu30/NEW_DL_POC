@@ -9,28 +9,27 @@ const Test = () => {
     // Fetch brief data using TRPC
     const { data: briefData, error } = trpc.edit.getAll.useQuery();
     // State variables
-    const [selectedOption, setSelectedOption] = useState('Published Content');
+    const [selectedOption, setSelectedOption] = useState('Published Brief');
 
     // Function to filter brief data based on the selected option
     const filterBriefData = (option: string) => {
-        if (option === 'Draft Content') {
+        if (option === 'Draft Brief') {
             return briefData?.fetchAllBriefs.filter(brief => brief.isDraft === true);
-        } else if (option === 'Published Content') {
-            return briefData?.fetchAllBriefs.filter(brief => brief.isPublished === true);
+        } else if (option === 'Published Brief') {
+            return briefData?.fetchAllBriefs.filter(brief => brief.isPublished === true || brief.isDraft === true);
         }
-        else if (option === 'Upcoming Content') {
+        else if (option === 'Upcoming Brief') {
             return briefData?.fetchAllBriefs.filter(brief => brief.publishedLater !== null);
         }
         return [];
     };
 
 
-    // Render table rows based on the filtered brief data
     const renderTableRows = () => {
         const filteredData = filterBriefData(selectedOption);
 
-        // Check if filteredData is not undefined
-        if (filteredData) {
+        // Check if filteredData is not undefined and not an empty array
+        if (filteredData && filteredData.length > 0) {
             return filteredData.map((brief, index) => (
                 <tr key={brief.id} className="border border-black hover:bg-gray-200">
                     <td className="border border-black px-4 py-2 text-center">{index + 1}</td>
@@ -48,15 +47,22 @@ const Test = () => {
                 </tr>
             ));
         } else {
-            // Return null or a placeholder if filteredData is undefined
-            return null;
+            // Handle the case when filteredData is undefined or an empty array
+            return (
+                <tr className="border border-black hover:bg-gray-200">
+                    <td colSpan={3} className="border border-black px-4 py-2 text-center">
+                        No Data Found
+                    </td>
+                </tr>
+            );
         }
     };
+
 
     return (
         <div className="p-20 mx-auto h-screen">
             <div>
-                <h1 className="text-4xl font-bold mb-6 text-center">Briefs List</h1>
+                <h1 className="text-4xl font-bold mb-6 text-center">Briefs</h1>
 
                 {/* "Add New Brief" Button */}
                 <Link href="/briefs/add">
@@ -68,15 +74,15 @@ const Test = () => {
 
                 {/* Select Field */}
                 <div className="flex items-center mb-4 bg-gray-100 rounded p-2">
-                    <label className="text-lg font-semibold mr-3">Choose content:</label>
+                    <label className="text-lg font-semibold mr-3">Choose brief type:</label>
                     <select
                         className="border border-gray-300 rounded px-3 py-2 bg-white"
                         value={selectedOption}
                         onChange={(e) => setSelectedOption(e.target.value)}
                     >
-                        <option value="Published Content">Published Content</option>
-                        <option value="Draft Content">Draft Content</option>
-                        <option value="Upcoming Content">Upcoming Content</option>
+                        <option value="Published Brief">Published Brief</option>
+                        <option value="Draft Brief">Draft Brief</option>
+                        <option value="Upcoming Brief">Upcoming Brief</option>
                     </select>
                 </div>
 

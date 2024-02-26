@@ -5,6 +5,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import Link from 'next/link';
 import RichTextEditor from '@/components/rich-text-editor';
+import toast from 'react-hot-toast';
 
 const BriefPage: React.FC = () => {
   const router = useRouter();
@@ -15,23 +16,39 @@ const BriefPage: React.FC = () => {
   const updateBriefMutation = trpc.edit.updateBrief.useMutation();
   const publishBriefMutation = trpc.edit.publishBriefById.useMutation();
   const publishLaterBriefMutation = trpc.edit.schedulePublishing.useMutation();
-
   const [publishedDate, setPublishedDate] = useState(new Date());
   const [isPublishButtonActive, setIsPublishButtonActive] = useState(false);
 
-  const indianStandardTimeOffset = 5.5 * 60 * 60 * 1000; // Offset for Indian Standard Time (IST) in milliseconds (5.5 hours ahead of UTC)
-
   const handlePublishNow = async () => {
     try {
-      const result = await publishBriefMutation.mutateAsync({ id });
+      const currentDate = new Date(); // Get the current date and time
+      console.log('Date', currentDate)
+      // currentDate.setHours(hours, minutes, 0, 0);
+
+      setPublishedDate(currentDate); // Update the publishedDate state     
+      const result = await publishBriefMutation.mutateAsync({ id, publishedOn: currentDate });
       if (result) {
-        const currentDateIST = new Date(Date.now() + indianStandardTimeOffset).toISOString(); // Get current date/time in IST
-        window.alert(`Brief published successfully on ${currentDateIST}`);
+        toast.success(`Brief published successfully on ${currentDate}`);
       }
     } catch (error) {
-      window.alert('Failed to publish brief');
+      toast.success('Failed to publish brief');
     }
   };
+
+  //const indianStandardTimeOffset = 5.5 * 60 * 60 * 1000; // Offset for Indian Standard Time (IST) in milliseconds (5.5 hours ahead of UTC)
+
+  // const handlePublishNow = async () => {
+  //   try {
+  //     const currentDateIST = new Date(Date.now() + indianStandardTimeOffset).toISOString(); // Get current date/time in IST
+  //     const result = await publishBriefMutation.mutateAsync({ id, publishedOn: currentDateIST });
+  //     if (result) {
+  //       toast.success(`Brief published successfully on ${currentDateIST}`);
+  //     }
+  //   } catch (error) {
+  //     toast.success('Failed to publish brief');
+  //   }
+  // };
+
 
   const handleColor = (time: Date) => {
     return time.getHours() > 12 ? "text-success" : "text-error";
@@ -45,14 +62,14 @@ const BriefPage: React.FC = () => {
         title: briefTitle,
         draftContent: richText,
       });
-      window.alert('Data saved successfully');
+      toast.success('Data saved successfully');
 
-     // Check if briefData exists and if it is scheduled for publishing later
-    if (briefData && briefData.publishedLater !== null) {
-      window.alert('Brief is scheduled to publish later');
-      return; // Do not navigate to view page
-    }
-    
+      // Check if briefData exists and if it is scheduled for publishing later
+      if (briefData && briefData.publishedLater !== null) {
+        toast.success('Brief is scheduled to publish later');
+        return; // Do not navigate to view page
+      }
+
 
       // Redirect to the view page after update
       router.push(`/briefs/view/${id}`);
@@ -67,7 +84,7 @@ const BriefPage: React.FC = () => {
       const futureDate = new Date(publishedDate);
       if (isNaN(futureDate.getTime()) || futureDate <= new Date()) {
         console.error('Error publishing brief later: Invalid future date');
-        window.alert('Invalid future date');
+        toast.error('Invalid future date');
         return;
       }
 
@@ -77,11 +94,11 @@ const BriefPage: React.FC = () => {
       });
 
       if (result) {
-        window.alert('Publish Date Saved for Later');
+        toast.success('Publish Date Saved for Later');
       }
     } catch (error) {
       console.error('Error saving publish date for later:', error);
-      window.alert('Failed to save publish date for later');
+      toast.error('Failed to save publish date for later');
     }
   };
 
@@ -107,23 +124,19 @@ const BriefPage: React.FC = () => {
           </button>
         </Link>
         <div className="w-full flex justify-end">
+          {/* <div className="relative"> */}
+          <span className="top-full left-0 text-red-600 text-md mt-1 mr-2">Please select a date</span>
           <DatePicker
             className="input outline-none pl-5 px-4 py-2 mr-5 border-5 border-black-500 rounded bg-blue-200 px-0 py-0 font-bold"
             showTimeSelect
             selected={publishedDate}
             onChange={(date: Date) => setPublishedDate(date)}
-            timeClassName={handleColor}
             dateFormat="MMM d, yyyy h:mm aa"
             minDate={new Date()}
           />
+          {/* Adjust the positioning of the tooltip message */}
 
-          <button
-            className={`border border-black px-4 py-2 rounded mr-2 ${isPublishButtonActive ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}
-            onClick={handlePublishNow}
-            disabled={!isPublishButtonActive}
-          >
-            Publish Now
-          </button>
+          {/* </div> */}
 
           <button
             className={`border border-black px-4 py-2 rounded mr-2 ${isPublishButtonActive ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}
@@ -131,6 +144,14 @@ const BriefPage: React.FC = () => {
             disabled={!isPublishButtonActive}
           >
             Publish Later
+          </button>
+
+          <button
+            className={`border border-black px-4 py-2 rounded mr-2 ${isPublishButtonActive ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}
+            onClick={handlePublishNow}
+            disabled={!isPublishButtonActive}
+          >
+            Publish Now
           </button>
         </div>
       </div>
@@ -171,9 +192,6 @@ const BriefPage: React.FC = () => {
       )}
     </div>
   );
-
-
-
 
 };
 

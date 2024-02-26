@@ -6,6 +6,7 @@ import { AppProps } from 'next/app';
 import { withTRPC } from '@trpc/next';
 import { trpc } from "../../src/utils";
 import '@/styles/globals.css'
+import { ToastContainer } from 'react-toastify'; // Import ToastContainer
 
 // Define the function App as a React component with correct signature
   const App = ({ Component, router, pageProps }: AppProps) => {

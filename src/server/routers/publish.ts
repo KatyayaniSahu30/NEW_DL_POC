@@ -10,28 +10,10 @@ import { type } from 'os';
 // create a Prisma client instance
 const prisma = new PrismaClient();
 
-interface PublishInput {
-  id: number;
-  publishedOn: string | Date | null;
-}
 
 // define the schema for the input parameter of the getBriefById procedure
 const idSchema = z.object({
   id: z.number(),
-});
-
-
-// define the schema for the brief data
-const briefSchema = z.object({
-  title: z.string(),
-  draftContent: z.string()
-});
-
-
-const briefUpdateSchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  draftContent: z.string()
 });
 
 
@@ -52,7 +34,6 @@ const idAndPublishLaterSchema = z.object({
 // Cron job to check and publish briefs at their scheduled time
 const triggerCronJob = () => {
   const minute = '0 */2 * * * *'; // Cron schedule for every 2 minutes
-  // const hour = '0 */2  15 * *'; // Cron schedule run every 2 minutes each day at 3 PM
   schedule.scheduleJob(minute, async () => {
     try {
       // Find briefs with a scheduled publishing date that has passed
@@ -76,7 +57,7 @@ const triggerCronJob = () => {
 };
 
 
-const publish = async (input: PublishInput) => {
+const publish = async (input: { id: number, publishedOn: string | Date | null }) => {
   const { id, publishedOn } = input;
 
   // Fetch the brief by ID
@@ -133,7 +114,7 @@ const publish = async (input: PublishInput) => {
 
 
 // define the editRouter with procedures
-export const editRouter = router({
+export const publishRouter = router({
   // Procedure to publish a brief based on its ID
   publishBriefById: procedure.input(publishBriefByIdSchema).mutation(async ({ input }) => {
     const { id, publishedOn } = input;
@@ -164,68 +145,6 @@ export const editRouter = router({
 
     // Trigger cron job to publish briefs at their scheduled time
     triggerCronJob();
-    return updatedBrief;
-  }),
-
-  // procedure to add a brief
-  saveAndDraftBrief: procedure.input(briefSchema).mutation(async ({ input }) => {
-    const { title, draftContent } = input;
-    const addBrief = await prisma.brief.create({
-      data: {
-        title,
-        draftContent
-      },
-    });
-    return addBrief;
-  }),
-
-
-  // procedure to get a brief by ID
-  getBriefById: procedure.input(idSchema).query(async ({ input }) => {
-    const brief = await prisma.brief.findUnique({
-      where: { id: input.id },
-    });
-    return brief;
-  }),
-
-
-  // Get all users
-  getAll: procedure.query(async () => {
-    const fetchAllBriefs = await prisma.brief.findMany();
-    return { fetchAllBriefs };
-  }),
-
-
-
-  // Update brief
-  updateBrief: procedure.input(briefUpdateSchema).mutation(async ({ input }) => {
-    const { id, title, draftContent } = input;
-
-    // Fetch the brief by ID to get the draft content
-    const brief = await prisma.brief.findUnique({
-      where: { id },
-      select: { draftContent: true }, // Select only the draftContent field
-    });
-
-    if (!brief) {
-      throw new Error(`Brief with ID ${id} not found.`);
-    }
-
-    // Update the brief based on the provided ID
-    const updatedBrief = await prisma.brief.update({
-      where: { id },
-      data: {
-        title,
-        draftContent,
-        publishedContent: draftContent, // Update publishedContent with draftContent
-        isDraft: true, // Set isDraft to true for editing in draft mode
-        isPublished: false, // Set isPublished to false
-        // publishedOn: null, // Clear publishedOn date
-        // publishedOn: new Date()
-      },
-    });
-
-
     return updatedBrief;
   }),
 
